@@ -4,12 +4,20 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
+#############################################
 # Vars
+#############################################
+
 IMAGE_NAME:=llama-cpp-orin:0.6.0
 CONTAINER_NAME:=llamacpp-container
 MAX_TOKENS:=2048
+
+# benchmarking
+BENCH_PROMPTS:=resources/bench_prompts.txt
 BENCH_RUNS:=5
 BENCH_N_PREDICT:=128
+POWER_INTERVAL:=100
+POWER_RAILS:=VDD_GPU_SOC|VDD_CPU_CV|VIN_SYS_5V0 # AGX Orin power rails summed as module power
 
 # Server address, shared by the serve targets and the client targets (infer, bench-sd)
 # 0.0.0.0 means the server will listen on whatever (still constrained by container's available network)
@@ -31,7 +39,12 @@ require=if [ -z "$($(1))" ]; then \
 		exit 1; \
 	fi
 
-.PHONY: serve serve-qwen3.8_27B_sd infer shell build bench bench-qwen3.8_27B_sd
+.PHONY: serve serve-qwen3.8_27B_sd infer shell build bench 
+
+
+#############################################
+# Targets
+#############################################
 
 build:
 	docker build -t $(IMAGE_NAME) --build-arg JOBS=4 -f llamacpp.Dockerfile .
@@ -52,27 +65,11 @@ shell:
 	(echo "$(IMAGE_NAME)"; \
 	$(DOCKER_RUN) -it $(IMAGE_NAME) bash)
 
-# Benchmark the specified model (prompt processing 512/2048 tokens, 128 generated, 5 repetitions).
+# Benchmark the running server (speed, draft acceptance, tokens per joule) with bench.py.
+# Results go to results/<timestamp>.csv; see `python3 bench.py --help`.
 bench:
-	@$(call require,MODEL,/models/<model>.gguf); \
-	docker run --rm --gpus all -v $(CURDIR)/models:/models:ro \
-		$(IMAGE_NAME) \
-		llama-bench -m $(MODEL) -p 512,2048 -n 128 -r 5 -ngl 99 -fa 1
-
-# Benchmark the running server (e.g. serve-qwen3.8_27B_sd), so speculative decoding is included.
-# llama-bench has no draft-model support. Use a realistic PROMPT: draft acceptance depends on content.
-bench-qwen3.8_27B_sd:
-	@$(call require,PROMPT,<your question>); \
-	$(call require,LLAMA_API_KEY,<key> (or set it in .env)); \
-	for i in $$(seq $(BENCH_RUNS)); do \
-		jq -n --arg p "$$PROMPT" --argjson n $(BENCH_N_PREDICT) '{prompt: $$p, n_predict: $$n, cache_prompt: false}' | \
-		curl -s $(API_URL)/completion \
-			-H "Content-Type: application/json" \
-			-H "Authorization: Bearer $(LLAMA_API_KEY)" \
-			-d @- | \
-		jq -c --arg i "$$i" '.timings | {run: ($$i | tonumber), pp_tok_s: .prompt_per_second, tg_tok_s: .predicted_per_second, draft_n, draft_n_accepted}' \
-		|| exit 1; \
-	done
+	python3 bench.py --url $(API_URL) --prompts $(BENCH_PROMPTS) --runs $(BENCH_RUNS) \
+		--n-predict $(BENCH_N_PREDICT) --interval $(POWER_INTERVAL) --rails "$(POWER_RAILS)"
 
 # Load the specified model and serve it on port 8080.
 serve:

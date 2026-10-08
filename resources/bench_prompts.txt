@@ -1,0 +1,8 @@
+# One prompt per line. Blank lines and lines starting with # are skipped.
+# Mix content types: speculative decoding helps more on predictable text (code) than on free prose.
+
+# Code: high draft acceptance expected
+Write a Python function that parses a CSV file of sensor readings (timestamp, sensor_id, value), skips malformed rows, and returns the average value per sensor. Include type hints, a docstring and error handling.
+
+# Prose: lower draft acceptance expected
+Explain how speculative decoding speeds up LLM inference, and when it does not help.
