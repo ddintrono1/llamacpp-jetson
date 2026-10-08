@@ -39,7 +39,8 @@ require=if [ -z "$($(1))" ]; then \
 		exit 1; \
 	fi
 
-.PHONY: serve serve-qwen3.8_27B_sd infer shell build bench 
+.PHONY: serve serve-qwen3.8_27B_sd serve-qwen3.8_27B_sd_ngram \
+ infer shell build bench 
 
 
 #############################################
@@ -71,7 +72,7 @@ bench:
 	python3 bench.py --url $(API_URL) --prompts $(BENCH_PROMPTS) --runs $(BENCH_RUNS) \
 		--n-predict $(BENCH_N_PREDICT) --interval $(POWER_INTERVAL) --rails "$(POWER_RAILS)"
 
-# Load the specified model and serve it on port 8080.
+# Serve the specified model and serve it on port 8080.
 serve:
 	@$(call require,MODEL,/models/<model>.gguf); \
 	$(DOCKER_RUN) \
@@ -79,13 +80,22 @@ serve:
 		$(IMAGE_NAME) \
 		$(SERVER) -m $(MODEL) -ngl 99 -c 8192 -np 1 -fa on
 
-# Load Qwen3.8-27B with speculative decoding
+# Serve Qwen3.8-27B with speculative decoding
 serve-qwen3.8_27B_sd:
 	$(DOCKER_RUN) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_NAME) \
 		$(SERVER) -m models/Qwen3.8-27B-Q4_K_M.gguf -md models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf \
 		--spec-type draft-dflash --spec-draft-n-max 15 --jinja -ngl 99 -c 8192 -np 1 -fa on
+
+# Serve Qwen3.8-27B with speculative decoding and ngrams
+serve-qwen3.8_27B_sd_ngram:
+	$(DOCKER_RUN) \
+		--name $(CONTAINER_NAME) \
+		$(IMAGE_NAME) \
+		$(SERVER) -m models/Qwen3.8-27B-Q4_K_M.gguf -md models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf \
+		--spec-type draft-dflash,ngram-mod --spec-draft-n-max 15 --jinja -ngl 99 -c 8192 -np 1 -fa on \
+		--spec-ngram-mod-n-min 4 --spec-ngram-mod-n-max 8 --spec-ngram-mod-n-match 32 
 
 clear:
 	@docker kill $(CONTAINER_NAME)
