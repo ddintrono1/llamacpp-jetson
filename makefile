@@ -97,5 +97,17 @@ serve-qwen3.8_27B_sd_ngram:
 		--spec-type draft-dflash,ngram-mod --spec-draft-n-max 15 --jinja -ngl 99 -c 8192 -np 1 -fa on \
 		--spec-ngram-mod-n-min 4 --spec-ngram-mod-n-max 8 --spec-ngram-mod-n-match 32 
 
+# Go full power: change Nvidia Power Model to MAX_N and set max clock frequencies, max fan speed.
+# jetson_clocks --fan generates an echo: write error that can be ignored, it doesn't affect functioning.
+max:
+	@sudo nvpmodel -m 0; \
+	sudo jetson_clocks; \
+	sudo jetson_clocks --fan
+
+# Go mid power, might reboot
+relax:
+	@echo "Setting power mode to 30_W, resetting clock, might reboot"; \
+	sudo nvpmodel -m 2 --force;
+
 clear:
 	@docker kill $(CONTAINER_NAME)
