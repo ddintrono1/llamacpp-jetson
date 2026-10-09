@@ -39,9 +39,10 @@ require=if [ -z "$($(1))" ]; then \
 		exit 1; \
 	fi
 
-.PHONY: serve serve-qwen3.8_27B_sd serve-qwen3.8_27B_sd_ngram \
- infer shell build bench 
-
+.PHONY: \
+ serve serve-qwen3.8_27B_sd serve-qwen3.8_27B_sd_ngram \
+ infer shell build bench download-models \
+ max relax 
 
 #############################################
 # Targets
@@ -49,6 +50,13 @@ require=if [ -z "$($(1))" ]; then \
 
 build:
 	docker build -t $(IMAGE_NAME) --build-arg JOBS=4 -f llamacpp.Dockerfile .
+
+# Download the models served by this repo (supports restarting)
+download-models:
+	@curl -L -C - -o models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf \
+	https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2-GGUF/resolve/main/Qwen3.8-27B-DFlash2-Q4_K_M.gguf ; \
+	curl -L -C - -o models/Qwen3.8-27B-Q4_K_M.gguf \
+	https://huggingface.co/Abiray/Qwen3.8-27B-Q4_K_M-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf ;
 
 # Prompt the loaded model (local only)
 infer:
@@ -72,7 +80,7 @@ bench:
 	python3 bench.py --url $(API_URL) --prompts $(BENCH_PROMPTS) --runs $(BENCH_RUNS) \
 		--n-predict $(BENCH_N_PREDICT) --interval $(POWER_INTERVAL) --rails "$(POWER_RAILS)"
 
-# Serve the specified model and serve it on port 8080.
+# Serve the specified model and on port 8080.
 serve:
 	@$(call require,MODEL,/models/<model>.gguf); \
 	$(DOCKER_RUN) \
