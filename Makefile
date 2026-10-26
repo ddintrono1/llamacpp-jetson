@@ -49,7 +49,7 @@ require=if [ -z "$($(1))" ]; then \
 #############################################
 
 build:
-	docker build -t $(IMAGE_NAME) --build-arg JOBS=4 -f llamacpp.Dockerfile .
+	docker build -t $(IMAGE_NAME) --build-arg JOBS=4 -f Dockerfile .
 
 # Download the models served by this repo (supports restarting)
 download-models:

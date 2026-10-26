@@ -2,7 +2,7 @@
 
 Run [llama.cpp](https://github.com/ggml-org/llama.cpp) on an NVIDIA Jetson AGX Orin inside Docker, serve models over an OpenAI-compatible HTTP API, and benchmark them for speed and energy efficiency.
 
-- **Image:** a two-stage build of llama.cpp `v0.6.0` with the CUDA backend, compiled only for Orin's GPU (`sm_87`). Target platform: JetPack 7.2 (L4T R39.2, Ubuntu 24.04, CUDA 13.2). See [llamacpp.Dockerfile](llamacpp.Dockerfile).
+- **Image:** a two-stage build of llama.cpp `v0.6.0` with the CUDA backend, compiled only for Orin's GPU (`sm_87`). Target platform: JetPack 7.2 (L4T R39.2, Ubuntu 24.04, CUDA 13.2). See [Dockerfile](Dockerfile).
 - **Serving:** `llama-server` with full GPU offload, flash attention and API-key authentication, with optional speculative decoding through a draft model.
 - **Benchmarking:** [bench.py](bench.py) measures generation speed, draft-token acceptance and **tokens per joule** using the board's power sensors.
 
