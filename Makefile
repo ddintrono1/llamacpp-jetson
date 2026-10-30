@@ -8,7 +8,7 @@ endif
 # Vars
 #############################################
 
-IMAGE_NAME:=llama-cpp-orin:0.6.0
+IMAGE_NAME:=llama-cpp-orin:0.8.0
 CONTAINER_NAME:=llamacpp-container
 MAX_TOKENS:=2048
 
@@ -40,8 +40,9 @@ require=if [ -z "$($(1))" ]; then \
 	fi
 
 .PHONY: \
- serve serve-qwen3.8_27B_sd serve-qwen3.8_27B_sd_ngram \
- infer shell build bench download-models \
+ serve serve-qwen3.8_27B_sd serve-qwen3.8_27B_sd_ngram serve-LFM3-1.7B-Q8_0 serve-LFM2.5-24B-A2B-Q4_K_M \
+ download-Qwen3.8-27B_with_draft download-LFM3-1.7B-Q8_0 download-LFM2.5-24B-A2B-Q4_K_M \
+ infer shell build bench \
  max relax 
 
 #############################################
@@ -52,11 +53,19 @@ build:
 	docker build -t $(IMAGE_NAME) --build-arg JOBS=4 -f Dockerfile .
 
 # Download the models served by this repo (supports restarting)
-download-models:
+download-Qwen3.8-27B_with_draft:
 	@curl -L -C - -o models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf \
 	https://huggingface.co/z-lab/Qwen3.8-27B-DFlash2-GGUF/resolve/main/Qwen3.8-27B-DFlash2-Q4_K_M.gguf ; \
 	curl -L -C - -o models/Qwen3.8-27B-Q4_K_M.gguf \
 	https://huggingface.co/Abiray/Qwen3.8-27B-Q4_K_M-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf ;
+
+download-LFM3-1.7B-Q8_0:
+	@curl -L -C - -o models/LFM3-1.7B-Q8_0.gguf \
+	https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/resolve/main/LFM3-1.7B-Q8_0.gguf?download=true
+
+download-LFM2.5-24B-A2B-Q4_K_M:
+	@curl -L -C - -o models/LFM2.5-24B-A2B-Q4_K_M.gguf \
+	https://huggingface.co/LiquidAI/LFM2.5-24B-A2B-GGUF/resolve/main/LFM2.5-24B-A2B-Q4_K_M.gguf?download=true
 
 # Prompt the loaded model (local only)
 infer:
@@ -89,7 +98,7 @@ serve:
 		$(SERVER) -m $(MODEL) -ngl 99 -c 8192 -np 1 -fa on
 
 # Serve Qwen3.8-27B with speculative decoding
-serve-qwen3.8_27B_sd:
+serve-Qwen3.8_27B_sd:
 	$(DOCKER_RUN) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_NAME) \
@@ -97,13 +106,27 @@ serve-qwen3.8_27B_sd:
 		--spec-type draft-dflash --spec-draft-n-max 15 --jinja -ngl 99 -c 8192 -np 1 -fa on
 
 # Serve Qwen3.8-27B with speculative decoding and ngrams
-serve-qwen3.8_27B_sd_ngram:
+serve-Qwen3.8_27B_sd_ngram:
 	$(DOCKER_RUN) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_NAME) \
 		$(SERVER) -m models/Qwen3.8-27B-Q4_K_M.gguf -md models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf \
 		--spec-type draft-dflash,ngram-mod --spec-draft-n-max 15 --jinja -ngl 99 -c 8192 -np 1 -fa on \
-		--spec-ngram-mod-n-min 4 --spec-ngram-mod-n-max 8 --spec-ngram-mod-n-match 32 
+		--spec-ngram-mod-n-min 4 --spec-ngram-mod-n-max 8 --spec-ngram-mod-n-match 32
+
+serve-LFM3-1.7B-Q8_0:
+	$(DOCKER_RUN) \
+		--name $(CONTAINER_NAME) \
+		$(IMAGE_NAME) \
+		$(SERVER) --agent -m models/LFM3-1.7B-Q8_0.gguf \
+		--jinja -ngl 99 -c 8192 -np 1 -fa on 
+
+serve-LFM2.5-24B-A2B-Q4_K_M:
+	$(DOCKER_RUN) \
+		--name $(CONTAINER_NAME) \
+		$(IMAGE_NAME) \
+		$(SERVER) --agent -m models/LFM2.5-24B-A2B-Q4_K_M.gguf \
+		--jinja -ngl 99 -c 8192 -np 1 -fa on 
 
 # Go full power: change Nvidia Power Model to MAX_N and set max clock frequencies, max fan speed.
 # jetson_clocks --fan generates an echo: write error that can be ignored, it doesn't affect functioning.

@@ -3,7 +3,8 @@
 # The build image can be removed if no further modifications are going to be performed.
 FROM nvcr.io/nvidia/cuda:13.2.0-devel-ubuntu24.04 AS build
 
-ARG JOBS=4
+# Tuned for Jetson
+ARG JOBS=12
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends git cmake build-essential ca-certificates && \
@@ -11,7 +12,7 @@ RUN apt-get update && \
 
 WORKDIR /src
 
-RUN git clone --depth 1 --branch v0.6.0 https://github.com/ggml-org/llama.cpp .
+RUN git clone --depth 1 --branch v0.8.0 https://github.com/ggml-org/llama.cpp .
 
 
 ################################
